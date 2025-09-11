@@ -951,7 +951,7 @@ _CONFIGS = [
         model=pi0_config.Pi0Config(pi05=True, paligemma_variant="dummy", action_expert_variant="dummy"),
         data=FakeDataConfig(),
         batch_size=2,
-        num_train_steps=10,
+        num_train_steps=1,
         overwrite=True,
         exp_name="debug_pi05",
         wandb_enabled=False,

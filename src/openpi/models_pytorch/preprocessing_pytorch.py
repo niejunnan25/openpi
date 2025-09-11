@@ -28,27 +28,32 @@ def preprocess_observation_pytorch(
 
     This function avoids complex type annotations that can cause torch.compile issues.
     """
+    # 判断 image_keys 是否是 observation.images 的子集
     if not set(image_keys).issubset(observation.images):
         raise ValueError(f"images dict missing keys: expected {image_keys}, got {list(observation.images)}")
 
+    # 若 observation.state 是 [B, S] 的形状，则 batch_shape 为 [B]
     batch_shape = observation.state.shape[:-1]
 
     out_images = {}
     for key in image_keys:
         image = observation.images[key]
-
+    
         # TODO: This is a hack to handle both [B, C, H, W] and [B, H, W, C] formats
         # Handle both [B, C, H, W] and [B, H, W, C] formats
         is_channels_first = image.shape[1] == 3  # Check if channels are in dimension 1
 
+        # 如果是 B, C, H, W 的形状，则转换为 B, H, W, C 的形状
         if is_channels_first:
             # Convert [B, C, H, W] to [B, H, W, C] for processing
             image = image.permute(0, 2, 3, 1)
 
+        # 如果解析度不一致，则调整
         if image.shape[1:3] != image_resolution:
             logger.info(f"Resizing image {key} from {image.shape[1:3]} to {image_resolution}")
             image = image_tools.resize_with_pad_torch(image, *image_resolution)
 
+        # 如果是训练状态，则进行数据增强
         if train:
             # Convert from [-1, 1] to [0, 1] for PyTorch augmentations
             image = image / 2.0 + 0.5
@@ -142,18 +147,22 @@ def preprocess_observation_pytorch(
             image = image * 2.0 - 1.0
 
         # Convert back to [B, C, H, W] format if it was originally channels-first
+        # 如果是 B, H, W, C 的形状，则转换为 B, C, H, W 的形状
         if is_channels_first:
             image = image.permute(0, 3, 1, 2)  # [B, H, W, C] -> [B, C, H, W]
 
         out_images[key] = image
 
+    # 获取 mask
     # obtain mask
     out_masks = {}
     for key in out_images:
+        # 如果 mask 不存在，则默认全 1
         if key not in observation.image_masks:
             # do not mask by default
             out_masks[key] = torch.ones(batch_shape, dtype=torch.bool, device=observation.state.device)
         else:
+            # 如果 mask 存在，则使用 mask
             out_masks[key] = observation.image_masks[key]
 
     # Create a simple object with the required attributes instead of using the complex Observation class
@@ -168,6 +177,9 @@ def preprocess_observation_pytorch(
         state=observation.state,
         tokenized_prompt=observation.tokenized_prompt,
         tokenized_prompt_mask=observation.tokenized_prompt_mask,
+
+        # 获取 token ar mask 和 token loss mask
+        # 一部分 loss 用 ar 优化，一部分 loss 用 mse 优化
         token_ar_mask=observation.token_ar_mask,
         token_loss_mask=observation.token_loss_mask,
     )
