@@ -116,16 +116,16 @@ class Pi0(_model.BaseModel):
         img_for = 0
         # embed images
         for name in obs.images:
-            print(f"当前循环第 {img_for} 次")
-            print(f"obs.images 是：", name)
-            print(f"obs.images 是：", jnp.array(obs.images[name]))
-            print(f"obs.images[name].shape 是：",obs.images[name].shape)
+            # print(f"当前循环第 {img_for} 次")
+            # print(f"obs.images 是：", name)
+            # print(f"obs.images 是：", jnp.array(obs.images[name]))
+            # print(f"obs.images[name].shape 是：",obs.images[name].shape)
 
             image_tokens, _ = self.PaliGemma.img(obs.images[name], train=False)
-            print(f"image_tokens.shape 是：",image_tokens.shape)
+            # print(f"image_tokens.shape 是：",image_tokens.shape)
 
             tokens.append(image_tokens)
-            print(f"当前的 tokens 长度是:", len(tokens))
+            # print(f"当前的 tokens 长度是:", len(tokens))
 
             input_mask.append(
                 einops.repeat(
@@ -134,60 +134,60 @@ class Pi0(_model.BaseModel):
                     s=image_tokens.shape[1],
                 )
             )
-            print(f"obs.image_masks[name] 对应的 mask 是：", einops.repeat(
-                    obs.image_masks[name],
-                    "b -> b s",
-                    s=image_tokens.shape[1],
-                ))
-            print(f"当前的 input_mask 长度是:", len(input_mask))
+            # print(f"obs.image_masks[name] 对应的 mask 是：", einops.repeat(
+            #         obs.image_masks[name],
+            #         "b -> b s",
+            #         s=image_tokens.shape[1],
+            #     ))
+            # print(f"当前的 input_mask 长度是:", len(input_mask))
 
             # image tokens attend to each other
             ar_mask += [False] * image_tokens.shape[1]
-            print(f"image_tokens.shape[1] 是：", image_tokens.shape[1])
-            print(f"ar_mask 的长度是", len(ar_mask))
+            # print(f"image_tokens.shape[1] 是：", image_tokens.shape[1])
+            # print(f"ar_mask 的长度是", len(ar_mask))
             img_for += 1
-            print("============================================================================================================")
+            # print("============================================================================================================")
 
         # add language (aka tokenized inputs)
         if obs.tokenized_prompt is not None:
             # obs.tokenized_prompt, 这个地方已经是 tokens 的 ID
-            # 这个地方给了 200 个 int32
-            print(f"obs.tokenized_prompt 是：", obs.tokenized_prompt)
+            # # 这个地方给了 200 个 int32
+            # print(f"obs.tokenized_prompt 是：", obs.tokenized_prompt)
             tokenized_inputs = self.PaliGemma.llm(obs.tokenized_prompt, method="embed")
             
             # 每个 token ID 都被映射成一个 64 维向量
             # tokenized_inputs.shape 是： (2, 200, 64)
-            print(f"tokenized_inputs.shape 是：", tokenized_inputs.shape)
+            # print(f"tokenized_inputs.shape 是：", tokenized_inputs.shape)
 
             # 
             tokens.append(tokenized_inputs)
-            print(f"当前的 tokens 长度是:", len(tokens))
+            # print(f"当前的 tokens 长度是:", len(tokens))
 
             input_mask.append(obs.tokenized_prompt_mask)
-            print(f"obs.tokenized_prompt_mask 是：", obs.tokenized_prompt_mask)
+            # print(f"obs.tokenized_prompt_mask 是：", obs.tokenized_prompt_mask)
 
             # full attention between image and language inputs
             ar_mask += [False] * tokenized_inputs.shape[1]
-            print(f"ar_mask 的长度是", len(ar_mask))
+            # print(f"ar_mask 的长度是", len(ar_mask))
 
-        print("============================================================================================================")
+        # print("============================================================================================================")
 
         # (2, 256, 64) + (2, 256, 64) + (2, 256, 64) + (2, 200, 64) = (2, 968, 64)
         tokens = jnp.concatenate(tokens, axis=1)
-        print(f"tokens.shape", tokens.shape)
+        # print(f"tokens.shape", tokens.shape)
         
-        print("============================================================================================================")
+        # print("============================================================================================================")
 
         # (2, 256) + (2, 256) + (2, 256) + (2, 200) = (2, 968)
         input_mask = jnp.concatenate(input_mask, axis=1)
-        print(f"input_mask.shape", input_mask.shape)
+        # print(f"input_mask.shape", input_mask.shape)
 
-        print("============================================================================================================")
+        # print("============================================================================================================")
 
         ar_mask = jnp.array(ar_mask)
-        print(f"ar_mask.shape", ar_mask.shape)
+        # print(f"ar_mask.shape", ar_mask.shape)
 
-        print("============================================================================================================")
+        # print("============================================================================================================")
 
         return tokens, input_mask, ar_mask
 
@@ -211,11 +211,11 @@ class Pi0(_model.BaseModel):
         ar_mask = []
         tokens = []
 
-        print()
-        print("==================================================suffix====================================================")
-        print("==================================================suffix====================================================")
-        print("==================================================suffix====================================================")
-        print()
+        # print()
+        # print("==================================================suffix====================================================")
+        # print("==================================================suffix====================================================")
+        # print("==================================================suffix====================================================")
+        # print()
 
         # TODO: 看看 pi0 的 ar_mask 是不是前两个 True, 后面的全是 False
         if not self.pi05:
@@ -228,43 +228,43 @@ class Pi0(_model.BaseModel):
             # image/language inputs do not attend to state or actions
             ar_mask += [True]
         
-        print(f"noisy_actions 是：", noisy_actions)
-        print(f"noisy_actions.shape 是：", noisy_actions.shape)
+        # print(f"noisy_actions 是：", noisy_actions)
+        # print(f"noisy_actions.shape 是：", noisy_actions.shape)
 
         # action_expert_config = _gemma.get_config(config.action_expert_variant)
         # action_expert_config.width = 64
         action_tokens = self.action_in_proj(noisy_actions)
-        print(f"action_tokens.shape 是：", action_tokens.shape)
-        print("============================================================================================================")
+        # print(f"action_tokens.shape 是：", action_tokens.shape)
+        # print("============================================================================================================")
 
         # embed timestep using sine-cosine positional encoding with sensitivity in the range [0, 1]
         # 嵌入时间步长，使用正弦-余弦位置编码，敏感度在[0, 1]范围内
-        print(f"timestep 是：", timestep)
-        print(f"timestep.shape 是：", timestep.shape)
+        # print(f"timestep 是：", timestep)
+        # print(f"timestep.shape 是：", timestep.shape)
         time_emb = posemb_sincos(timestep, self.action_in_proj.out_features, min_period=4e-3, max_period=4.0)
-        print(f"time_emb.shape 是：", time_emb.shape)
+        # print(f"time_emb.shape 是：", time_emb.shape)
 
-        print("============================================================================================================")
+        # print("============================================================================================================")
 
         if self.pi05:
             # time MLP (for adaRMS)
             time_emb = self.time_mlp_in(time_emb)
-            print(f"time_emb.shape 是：", time_emb.shape)
+            # print(f"time_emb.shape 是：", time_emb.shape)
 
             time_emb = nnx.swish(time_emb)
-            print(f"time_emb.shape 是：", time_emb.shape)
+            # print(f"time_emb.shape 是：", time_emb.shape)
 
             time_emb = self.time_mlp_out(time_emb)
-            print(f"time_emb.shape 是：", time_emb.shape)
+            # print(f"time_emb.shape 是：", time_emb.shape)
 
             time_emb = nnx.swish(time_emb)
-            print(f"time_emb.shape 是：", time_emb.shape)
+            # print(f"time_emb.shape 是：", time_emb.shape)
 
             #################################################################################################################
 
             action_expert_tokens = action_tokens
-            print(f"action_expert_tokens 是 action_tokens")
-            print(f"action_expert_tokens.shape 是：", action_expert_tokens.shape)
+            # print(f"action_expert_tokens 是 action_tokens")
+            # print(f"action_expert_tokens.shape 是：", action_expert_tokens.shape)
 
             # time_emb 作为 adarms_cond 使用
             adarms_cond = time_emb
@@ -278,7 +278,7 @@ class Pi0(_model.BaseModel):
             action_expert_tokens = action_time_tokens
             adarms_cond = None
         
-        print("============================================================================================================")
+        # print("============================================================================================================")
 
         #################################################################################################################
         # 这里添加了一个 action_expert_tokens
@@ -288,30 +288,30 @@ class Pi0(_model.BaseModel):
 
         tokens.append(action_expert_tokens)
 
-        print(f"tokens 的长度是：", len(tokens))
+        # print(f"tokens 的长度是：", len(tokens))
 
         input_mask.append(jnp.ones(action_expert_tokens.shape[:2], dtype=jnp.bool_))
         # 生成一个 (2, 50) 形状的 mask
-        print(f"action_expert_tokens.shape[:2] 是", action_expert_tokens.shape[:2])
-        print(f"input_mask 的长度是：", len(input_mask))
+        # print(f"action_expert_tokens.shape[:2] 是", action_expert_tokens.shape[:2])
+        # print(f"input_mask 的长度是：", len(input_mask))
 
-        print("============================================================================================================")
+        # print("============================================================================================================")
 
         # image/language/state inputs do not attend to action tokens
         # 图像/语言/状态输入不关注动作标记
         # 如果是 pi05, [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
         ar_mask += [True] + ([False] * (self.action_horizon - 1))
-        print(f"ar_mask 的长度是：", len(ar_mask))
-        print(f"ar_mask 是：", ar_mask)
+        # print(f"ar_mask 的长度是：", len(ar_mask))
+        # print(f"ar_mask 是：", ar_mask)
 
         tokens = jnp.concatenate(tokens, axis=1)
-        print(f"tokens.shape 是：", tokens.shape)
+        # print(f"tokens.shape 是：", tokens.shape)
 
         input_mask = jnp.concatenate(input_mask, axis=1)
-        print(f"input_mask.shape 是：", input_mask.shape)
+        # print(f"input_mask.shape 是：", input_mask.shape)
 
         ar_mask = jnp.array(ar_mask)
-        print(f"ar_mask.shape 是：", ar_mask.shape)
+        # print(f"ar_mask.shape 是：", ar_mask.shape)
 
         return tokens, input_mask, ar_mask, adarms_cond
 
@@ -328,7 +328,7 @@ class Pi0(_model.BaseModel):
 
         # 获取动作的形状, batch_shape 是： (2,)
         batch_shape = actions.shape[:-2]
-        print(f"batch_shape 是：", batch_shape)
+        # print(f"batch_shape 是：", batch_shape)
 
         noise = jax.random.normal(noise_rng, actions.shape)
         time = jax.random.beta(time_rng, 1.5, 1, batch_shape) * 0.999 + 0.001
@@ -340,7 +340,7 @@ class Pi0(_model.BaseModel):
         prefix_tokens, prefix_mask, prefix_ar_mask = self.embed_prefix(observation)
         suffix_tokens, suffix_mask, suffix_ar_mask, adarms_cond = self.embed_suffix(observation, x_t, time)
 
-        exit()
+        # exit()
         input_mask = jnp.concatenate([prefix_mask, suffix_mask], axis=1)
         ar_mask = jnp.concatenate([prefix_ar_mask, suffix_ar_mask], axis=0)
         attn_mask = make_attn_mask(input_mask, ar_mask)

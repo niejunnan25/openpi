@@ -907,6 +907,114 @@ _CONFIGS = [
         num_train_steps=20_000,
         batch_size=32,
     ),
+    ########################################################################################################################
+
+    TrainConfig(
+        name="pi0_zero_shot",
+        model=pi0_config.Pi0Config(),
+        data=SimpleDataConfig(
+            assets=AssetsConfig(asset_id="droid"),
+            data_transforms=lambda model: _transforms.Group(
+                inputs=[droid_policy.DroidInputs(model_type=ModelType.PI0)],
+                outputs=[droid_policy.DroidOutputs()],
+            ),
+            base_config=DataConfig(
+                prompt_from_task=True,
+            ),
+        ),
+    ),
+
+    TrainConfig(
+        name="pi0_droid_zero_shot",
+        model=pi0_config.Pi0Config(),
+        data=SimpleDataConfig(
+            assets=AssetsConfig(asset_id="droid"),
+            data_transforms=lambda model: _transforms.Group(
+                inputs=[droid_policy.DroidInputs(model_type=ModelType.PI0)],
+                outputs=[droid_policy.DroidOutputs()],
+            ),
+            base_config=DataConfig(
+                prompt_from_task=True,
+            ),
+        ),
+    ),
+
+
+    # XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_lerobot_datasets_data_300_fps_10_new_cropped --exp-name=pi05_data_300_fps_10_0917_1120 --overwrite
+    TrainConfig(
+        name="pi05_lerobot_datasets_data_300_fps_10_new_cropped",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=10, discrete_state_input=False),
+        data=LeRobotLiberoDataConfig(
+            repo_id="nie0731/lerobot_datasets_data_300_fps_10_new_cropped",
+            base_config=DataConfig(prompt_from_task=True),
+            extra_delta_transform=False,
+        ),
+        batch_size=64,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        pytorch_weight_path = None,
+        num_train_steps=50000,
+        # 保留所有的 checkpoint
+        keep_period=None,
+        # 每 500 个 steps 保留一个 checkpoint
+        save_interval=500,
+    ),
+    TrainConfig(
+        name="pi05_lerobot_datasets_data_300_fps_10_new_cropped_test",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=10, discrete_state_input=False),
+        data=LeRobotLiberoDataConfig(
+            repo_id="nie0731/lerobot_datasets_data_300_fps_10_new_cropped",
+            base_config=DataConfig(prompt_from_task=True),
+            extra_delta_transform=False,
+        ),
+        batch_size=8,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        pytorch_weight_path = None,
+        num_train_steps=50000,
+    ),
+    # XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi0_lerobot_datasets_data_300_fps_10_new_cropped --exp-name=pi0_data_300_fps_10_0917_1120 --overwrite
+    TrainConfig(
+        name="pi0_lerobot_datasets_data_300_fps_10_new_cropped",
+        model=pi0_config.Pi0Config(action_horizon=10),
+        data=LeRobotLiberoDataConfig(
+            repo_id="nie0731/lerobot_datasets_data_300_fps_10_new_cropped",
+            base_config=DataConfig(prompt_from_task=True),
+            extra_delta_transform=False,
+        ),
+        batch_size=64,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        pytorch_weight_path = None,
+        num_train_steps=50000,
+        # 保留所有的 checkpoint
+        keep_period=None,
+        # 每 500 个 steps 保留一个 checkpoint
+        save_interval=500,
+    ),
+
+    ########################################################################################################################
     #
     # ALOHA Sim configs. This config is used to demonstrate how to train on a simple simulated environment.
     #
